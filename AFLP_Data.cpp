@@ -48,7 +48,7 @@ AFLP_Data::AFLP_Data(string pth)
 			int number;
 			ifile >> number;
 			NofZoneI[i].push_back(number);
-			InvNofZoneI[number].push_back(i);
+			InvNofZoneI[number].insert(i);
 		}
 	}
 	cout << endl;
@@ -103,6 +103,13 @@ AFLP_Data::~AFLP_Data()
 
 bool AFLP_Data::is_IMobJ(int i, int j) {
 	if (AofZoneJ[i].find(j) != AofZoneJ[i].end()) {
+		return true;
+	}
+	return false;
+}
+
+bool AFLP_Data::is_JCovI(int i, int j) {
+	if (InvNofZoneI[j].find(i)!= InvNofZoneI[j].end()) {
 		return true;
 	}
 	return false;

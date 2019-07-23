@@ -2,10 +2,14 @@
 
 
 
-GenAlg::GenAlg(AFLP_Data *aflp)
+GenAlg::GenAlg(AFLP_Data *aflp,int Npop)
 {
 	_aflp = aflp;
-	_LRC_PerC = 0.3;
+	_LRC_PerC = 0.4;
+	_PCCO = 1;
+	_Npop = Npop;
+	_Ngens = 100000;
+	
 	for (int i = 0; i < _aflp->get_ZonesI(); i++) {
 		Pot_zone pot1(i, _aflp->get_sizeNofZ(i)+_aflp->get_sizeIAofZ(i));
 		Pot_zone pot2(i, _aflp->get_sizeNofZ(i));
@@ -28,11 +32,6 @@ GenAlg::GenAlg(AFLP_Data *aflp)
 	//for (int i = 0; i < _aflp->get_ZonesI(); i++) {
 		//cout <<LRCI1[i].get_id() << "\t" <<LRCI1[i].get_eval() << endl;
 	//}
-	Constr_Method1();
-	Constr_Method2();
-	Constr_Method3();
-	Constr_Method4();
-	Constr_Method5();
 }
 
 
@@ -58,7 +57,9 @@ void GenAlg::Constr_Method1() {
 	//Añadir clientes y Evaluar
 	//Generar función en Clase individual
 	//Generar conjunto de la población 
-	new_individual->completeSol_max();
+	new_individual->completeSol();
+	_Pop.insert(*new_individual);
+	cout << "sol1 = " << new_individual->get_eval() << endl;
 }
 
 void GenAlg::Constr_Method2() {
@@ -73,6 +74,9 @@ void GenAlg::Constr_Method2() {
 		new_individual->add_openFacilituy(LCR_temp[nPos].get_id());
 		LCR_temp.erase(LCR_temp.begin() + nPos);
 	}
+	new_individual->completeSol();
+	_Pop.insert(*new_individual);
+	cout << "sol2 = " << new_individual->get_eval() << endl;
 }
 
 void GenAlg::Constr_Method3() {
@@ -87,6 +91,9 @@ void GenAlg::Constr_Method3() {
 		new_individual->add_openFacilituy(LCR_temp[nPos].get_id());
 		LCR_temp.erase(LCR_temp.begin() + nPos);
 	}
+	new_individual->completeSol();
+	_Pop.insert(*new_individual);
+	cout << "sol3 = " << new_individual->get_eval() << endl;
 }
 
 void GenAlg::Constr_Method4() {
@@ -101,6 +108,9 @@ void GenAlg::Constr_Method4() {
 		new_individual->add_openFacilituy(LCR_temp[nPos].get_id());
 		LCR_temp.erase(LCR_temp.begin() + nPos);
 	}
+	new_individual->completeSol();
+	_Pop.insert(*new_individual);
+	cout << "sol4 = " << new_individual->get_eval() << endl;
 }
 
 void GenAlg::Constr_Method5() {
@@ -151,5 +161,136 @@ void GenAlg::Constr_Method5() {
 		LCR_temp.clear();
 	}
 	//new_individual->print_OpenFacilities();
+	new_individual->completeSol();
+	_Pop.insert(*new_individual);
+	cout << "sol5 = " << new_individual->get_eval() << endl;
 }
 
+
+void GenAlg::generate_population() {
+	int SolPer = (int)floor(_Npop / 5.0);
+	while ((int)_Pop.size() < _Npop) {
+		int indic = (int)_Pop.size();
+
+		if (indic < SolPer) {
+			Constr_Method1();
+		}
+		else if (indic < 2 * SolPer) {
+			Constr_Method2();
+		}
+		else if (indic < 3 * SolPer) {
+			Constr_Method3();
+		}
+		else if (indic < 4 * SolPer) {
+			Constr_Method4();
+		}
+		else {
+			Constr_Method5();
+		}
+	}
+}
+
+void GenAlg::cross_over() {
+	int nCop =(int) floor(_Npop * _PCCO);
+
+	vector <Individual> CO_pop;
+	set<Individual>::iterator ItInd;
+	unordered_set<int> used_ind;
+	int index;
+	cout << "----------------------------" << endl;
+	cout << _Pop.begin()->get_eval() << endl;
+	while (used_ind.size() < nCop) {
+		index = rand() % _Npop;
+		if (used_ind.find(index) == used_ind.end()) {
+			ItInd = _Pop.begin();
+			advance(ItInd, index);
+			CO_pop.push_back(*ItInd);
+			used_ind.insert(index);
+		}
+	}
+	
+	while (CO_pop.size() > 1) {
+		int rnd = rand() % CO_pop.size();
+		Individual par1 = CO_pop[rnd];
+		CO_pop.erase(CO_pop.begin()+rnd);
+		rnd = rand() % CO_pop.size();
+		Individual par2 = CO_pop[rnd];
+		CO_pop.erase(CO_pop.begin() + rnd);
+		cross_ind(par1, par2);
+	}
+	
+	cout << _Pop.begin()->get_eval() << endl;
+	cout << "----------------------------" << endl;
+}
+
+
+void GenAlg::cross_ind(Individual dad, Individual mom) {
+	
+	unordered_set<int> gened = dad.get_openFacilities(), genem = mom.get_openFacilities(),_NI;
+	int nPos;
+	bool indic = true;
+	double rnd;
+	
+	for (int gd : gened) {
+		rnd = (double)rand() / RAND_MAX;
+		if (rnd < 0.5) {
+			_NI.insert(gd);
+		}
+	}
+	for (int gm : genem) {
+		rnd = (double)rand() / RAND_MAX;
+		if (rnd < 0.5) {
+			_NI.insert(gm);
+		}
+	}
+
+	while (_NI.size() < _aflp->get_NLoc()) {
+		nPos = rand() % _aflp->get_NLoc();
+		_NI.insert(nPos);
+	}
+
+	while (_NI.size() > _aflp->get_NLoc()) {
+		unordered_set<int>::iterator it = _NI.begin();
+		nPos = rand() % _NI.size();
+		advance(it, nPos);
+		_NI.erase(it);
+	}
+
+	// Mutación.
+	rnd = (double)rand() / RAND_MAX;
+	indic = true;
+	if (rnd < 0.4) {
+		while (indic) {
+			nPos = rand() % _aflp->get_NLoc();
+			if (_NI.find(nPos) == _NI.end()) {
+				
+				indic = false;
+			}
+		}
+		unordered_set<int>::iterator it = _NI.begin();
+		int nPos2 = rand() % _NI.size();
+		advance(it, nPos2);
+		_NI.erase(it);
+		_NI.insert(nPos);
+		
+	}
+
+	Individual newIndividual(_aflp);
+	for (int elem : _NI) {
+		newIndividual.add_openFacilituy(elem);
+	}
+	newIndividual.completeSol();
+	_Pop.insert(newIndividual);
+	_NI.clear();
+	gened.clear();
+	genem.clear();
+}
+ 
+void GenAlg::solve(){
+	generate_population();
+
+	for (int i = 0; i < _Ngens; i++) {
+		cross_over();
+	}
+
+}

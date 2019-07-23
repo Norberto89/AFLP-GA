@@ -12,8 +12,9 @@ int main(int argc, char* argv[]) {
 	string pth = argv[1];
 	AFLP_Data *_AfData = new AFLP_Data(pth);
 	
-	GenAlg *_gen = new GenAlg(_AfData);
+	GenAlg *_gen = new GenAlg(_AfData,100);
 
+	_gen->solve();
 
 	delete _AfData;
 	system("pause");
